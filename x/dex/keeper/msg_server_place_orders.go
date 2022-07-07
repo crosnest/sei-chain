@@ -35,7 +35,7 @@ func (k msgServer) transferFunds(goCtx context.Context, msg *types.MsgPlaceOrder
 		return err
 	}
 
-	di := k.DepositInfo[msg.GetContractAddr()]
+	di := k.DepositInfo[types.ContractAddress(msg.GetContractAddr())]
 	for _, fund := range msg.Funds {
 		fundDenom, unit, err := types.GetDenomFromStr(fund.Denom)
 		if err != nil {
@@ -60,32 +60,23 @@ func (k msgServer) PlaceOrders(goCtx context.Context, msg *types.MsgPlaceOrders)
 		return nil, err
 	}
 
-	pairToOrderPlacements := k.OrderPlacements[msg.GetContractAddr()]
+	contractBlockOrders := k.BlockOrders[types.ContractAddress(msg.GetContractAddr())]
 
-	
 	nextId := k.GetNextOrderId(ctx)
 	idsInResp := []uint64{}
-	for _, orderPlacement := range msg.GetOrders() {
-		ticksize, found := k.Keeper.GetTickSizeForPair(ctx,msg.GetContractAddr(), types.Pair{PriceDenom: orderPlacement.PriceDenom, AssetDenom: orderPlacement.AssetDenom})
+	for _, order := range msg.GetOrders() {
+		priceDenom := types.MustGetStandardDenomFromStr(order.PriceDenom)
+		assetDenom := types.MustGetStandardDenomFromStr(order.AssetDenom)
+		ticksize, found := k.Keeper.GetTickSizeForPair(ctx, msg.GetContractAddr(), types.Pair{PriceDenom: priceDenom, AssetDenom: assetDenom})
 		if !found {
-			return nil, sdkerrors.Wrapf(sdkerrors.ErrKeyNotFound, "the pair {price:%s,asset:%s} has no ticksize configured", orderPlacement.PriceDenom.String(), orderPlacement.AssetDenom.String())
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrKeyNotFound, "the pair {price:%s,asset:%s} has no ticksize configured", priceDenom.String(), assetDenom.String())
 		}
-		pair := types.Pair{PriceDenom: orderPlacement.PriceDenom, AssetDenom: orderPlacement.AssetDenom, Ticksize: &ticksize}
-		(*pairToOrderPlacements[pair.String()]).Orders = append(
-			(*pairToOrderPlacements[pair.String()]).Orders,
-			dexcache.OrderPlacement{
-				Id:         nextId,
-				Price:      orderPlacement.Price,
-				Quantity:   orderPlacement.Quantity,
-				Creator:    msg.Creator,
-				PriceDenom: orderPlacement.PriceDenom,
-				AssetDenom: orderPlacement.AssetDenom,
-				OrderType:  orderPlacement.OrderType,
-				Direction:  orderPlacement.PositionDirection,
-				Effect:     orderPlacement.PositionEffect,
-				Leverage:   orderPlacement.Leverage,
-			},
-		)
+		pair := types.Pair{PriceDenom: priceDenom, AssetDenom: assetDenom, Ticksize: ticksize}
+		pairStr := types.PairString(pair.String())
+		order.Id = nextId
+		order.Account = msg.Creator
+		order.ContractAddr = msg.GetContractAddr()
+		contractBlockOrders[pairStr].AddOrder(*order)
 		idsInResp = append(idsInResp, nextId)
 		nextId += 1
 	}

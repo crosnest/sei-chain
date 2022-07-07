@@ -8,6 +8,17 @@ import (
 
 const MICRO_PREFIX = byte('u')
 
+func MustGetStandardDenomFromStr(str string) Denom {
+	denom, unit, err := GetDenomFromStr(str)
+	if unit != Unit_STANDARD {
+		panic("Unit must be standard (e.g. SEI instead of uSEI)")
+	}
+	if err != nil {
+		panic(err)
+	}
+	return denom
+}
+
 func GetDenomFromStr(str string) (Denom, Unit, error) {
 	val, err := getEnumFromStr(str, Denom_value)
 	if err != nil {

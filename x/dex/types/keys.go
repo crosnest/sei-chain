@@ -17,6 +17,9 @@ const (
 
 	// MemStoreKey defines the in-memory store key
 	MemStoreKey = "mem_dex"
+
+	// We don't want pair ABC<>DEF to have the same key as AB<>CDEF
+	PairSeparator = "|"
 )
 
 func KeyPrefix(p string) []byte {
@@ -27,15 +30,11 @@ func ContractKeyPrefix(p string, contractAddr string) []byte {
 	return append([]byte(p), []byte(contractAddr)...)
 }
 
-func PairPrefix(priceDenom Denom, assetDenom Denom) []byte {
-	key1 := make([]byte, 4)
-	binary.BigEndian.PutUint32(key1, uint32(priceDenom))
-	key2 := make([]byte, 4)
-	binary.BigEndian.PutUint32(key2, uint32(assetDenom))
-	return append(key1, key2...)
+func PairPrefix(priceDenom string, assetDenom string) []byte {
+	return append([]byte(priceDenom), append([]byte(PairSeparator), []byte(assetDenom)...)...)
 }
 
-func OrderBookPrefix(long bool, contractAddr string, priceDenom Denom, assetDenom Denom) []byte {
+func OrderBookPrefix(long bool, contractAddr string, priceDenom string, assetDenom string) []byte {
 	var prefix []byte
 	if long {
 		prefix = KeyPrefix(LongBookKey)
@@ -77,6 +76,18 @@ func TickSizeKeyPrefix(contractAddr string) []byte {
 	return append(KeyPrefix(TickSizeKey), KeyPrefix(contractAddr)...)
 }
 
+func OrderPrefix(contractAddr string) []byte {
+	return append(KeyPrefix(OrderKey), KeyPrefix(contractAddr)...)
+}
+
+func Cancel(contractAddr string) []byte {
+	return append(KeyPrefix(CancelKey), KeyPrefix(contractAddr)...)
+}
+
+func AccountActiveOrdersPrefix(contractAddr string) []byte {
+	return append(KeyPrefix(AccountActiveOrdersKey), KeyPrefix(contractAddr)...)
+}
+
 func RegisteredPairCountPrefix() []byte {
 	return KeyPrefix(RegisteredPairCount)
 }
@@ -96,13 +107,17 @@ const (
 	ShortBookCountKey = "ShortBook-count-"
 )
 
-
+const (
+	OrderKey               = "order"
+	AccountActiveOrdersKey = "account-active-orders"
+	CancelKey              = "cancel"
+)
 
 const (
-	TwapKey = "TWAP-"
-    PriceKey = "Price-"
-    SettlementEntryKey = "SettlementEntry-"
-    NextOrderIdKey = "noid"
+	TwapKey             = "TWAP-"
+	PriceKey            = "Price-"
+	SettlementEntryKey  = "SettlementEntry-"
+	NextOrderIdKey      = "noid"
 	RegisteredPairKey   = "rp"
 	RegisteredPairCount = "rpcnt"
 	TickSizeKey         = "ticks"

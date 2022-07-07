@@ -21,7 +21,7 @@ func createNSettlements(keeper *keeper.Keeper, ctx sdk.Context, n int) []types.S
 		}
 		entries := []*types.SettlementEntry{&entry}
 		items[i].Entries = entries
-		keeper.SetSettlements(ctx, TEST_CONTRACT, pd, ad, items[i])
+		keeper.SetSettlements(ctx, TEST_CONTRACT, types.GetContractDenomName(pd), types.GetContractDenomName(ad), items[i])
 	}
 	return items
 }
